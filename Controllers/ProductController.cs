@@ -163,5 +163,47 @@ namespace OWMS.Controllers
                 }
             }
         }
+        [HttpPost("generate-qrcode/batch")]
+        public async Task<IActionResult> GenerateBatchQRCode([FromBody] List<int> productIds)
+        {
+            var products = await _context.Products
+                                        .Where(p => productIds.Contains(p.Id))
+                                        .ToListAsync();
+
+            if (products == null || products.Count == 0)
+            {
+                return NotFound();
+            }
+
+            var qrCodes = new List<byte[]>();
+
+            using (var qrGenerator = new QRCodeGenerator())
+            {
+                foreach (var product in products)
+                {
+                    var qrCodeData = qrGenerator.CreateQrCode($"https://yourwebsite.com/product/{product.Id}", QRCodeGenerator.ECCLevel.Q);
+                    using (var qrCode = new PngByteQRCode(qrCodeData))
+                    {
+                        qrCodes.Add(qrCode.GetGraphic(20));
+                    }
+                }
+            }
+
+            // 打包 ZIP 檔案
+            using var memoryStream = new MemoryStream();
+            using (var zipArchive = new System.IO.Compression.ZipArchive(memoryStream, System.IO.Compression.ZipArchiveMode.Create, true))
+            {
+                for (int i = 0; i < qrCodes.Count; i++)
+                {
+                    var entry = zipArchive.CreateEntry($"QRCode_{products[i].ProductName}.png", System.IO.Compression.CompressionLevel.Fastest);
+                    using (var entryStream = entry.Open())
+                    {
+                        entryStream.Write(qrCodes[i], 0, qrCodes[i].Length);
+                    }
+                }
+            }
+
+            return File(memoryStream.ToArray(), "application/zip", "QRCodes.zip");
+        }
     }
 }

@@ -1,18 +1,17 @@
+using System;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.IdentityModel.JsonWebTokens;
-using System.Threading.Tasks;
-
-using BCrypt.Net;
+using System.IdentityModel.Tokens.Jwt; // 引用這個命名空間
 using OWMS.Data;
 using OWMS.Models;
 using OWMS.Requests;
 
-using System;
 
 [Route("api/auth")]
 [ApiController]
@@ -67,9 +66,9 @@ public class AuthController : ControllerBase
             Audience = jwtSettings["Audience"],
         };
 
-        var handler = new JsonWebTokenHandler();
+        var handler = new JwtSecurityTokenHandler();
 
-        string token = handler.CreateToken(tokenDescriptor);
+        string token = handler.WriteToken(handler.CreateToken(tokenDescriptor));
         return token;
     }
 }

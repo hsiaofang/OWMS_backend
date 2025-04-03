@@ -3,11 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OWMS.Models
 {
-    public class IntervalNumber
+    public class BatchNumber
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        public string BatchCode { get; set; } = string.Empty;
 
         [Required]
         public DateTime StartDate { get; set; }

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt; // 引用這個命名空間
+using System.IdentityModel.Tokens.Jwt;
 using OWMS.Data;
 using OWMS.Models;
 using OWMS.Requests;
@@ -26,18 +26,48 @@ public class AuthController : ControllerBase
         _config = config;
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] AuthRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { result = "error", message = "Username and password are required." });
+        }
+
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+        if (existingUser != null)
+        {
+            return Conflict(new { result = "error", message = "Username already exists." });
+        }
+
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        var newUser = new User
+        {
+            Username = request.Username,
+            Password = hashedPassword
+        };
+
+        _context.Users.Add(newUser);
+        await _context.SaveChangesAsync();
+
+        var token = GenerateJwtToken(newUser);
+        return Ok(new { result = "success", message = "User registered successfully.", token });
+    }
+
+
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] AuthRequest request)
     {
         if (request == null || string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
         {
-            return BadRequest("請輸入帳號和密碼");
+            return BadRequest("Please enter a username and password.");
         }
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
         {
-            return Unauthorized("帳號或密碼錯誤");
+            return Unauthorized(new { result = "error", message = "Invalid username or password." });
         }
 
         var token = GenerateJwtToken(user);

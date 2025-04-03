@@ -19,7 +19,8 @@ namespace OWMS.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Vendor>>> GetAllVendors()
         {
-            return await _context.Vendors.ToListAsync();
+            var vendors = await _context.Vendors.ToListAsync();
+            return Ok(new { result = "success", vendors });
         }
 
         // 新增
@@ -28,13 +29,13 @@ namespace OWMS.Controllers
         {
             if (newVendor == null)
             {
-                return BadRequest("Invalid vendor data.");
+                return BadRequest(new { result = "failure", message = "Invalid vendor data." });
             }
 
             _context.Vendors.Add(newVendor);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetAllVendors), new { id = newVendor.VendorId }, newVendor);
+            return CreatedAtAction(nameof(GetAllVendors), new { id = newVendor.VendorId }, new { result = "success", vendor = newVendor });
         }
 
         // 編輯
@@ -44,7 +45,7 @@ namespace OWMS.Controllers
             var vendor = await _context.Vendors.FindAsync(id);
             if (vendor == null)
             {
-                return NotFound();
+                return NotFound(new { result = "failure", message = "Vendor not found." });
             }
 
             vendor.Name = updatedVendor.Name;
@@ -55,7 +56,7 @@ namespace OWMS.Controllers
             _context.Vendors.Update(vendor);
             await _context.SaveChangesAsync();
 
-            return Ok(vendor);
+            return Ok(new { result = "success", vendor });
         }
 
         // 刪除
@@ -65,13 +66,13 @@ namespace OWMS.Controllers
             var vendor = await _context.Vendors.FindAsync(id);
             if (vendor == null)
             {
-                return NotFound();
+                return NotFound(new { result = "failure", message = "Vendor not found." });
             }
 
             _context.Vendors.Remove(vendor);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return NoContent(); // NoContent does not typically have a body, so you can omit the result here.
         }
 
         // 搜尋
@@ -93,66 +94,65 @@ namespace OWMS.Controllers
             }
 
             var vendors = await query.ToListAsync();
-            return Ok(vendors);
+            return Ok(new { result = "success", vendors });
         }
 
         // 區間單號
-        [HttpGet("{id}/interval")]
-        public async Task<ActionResult<IntervalNumber>> GetVendorInterval(int id)
+        [HttpGet("{id}/batchnumbers")]
+        public async Task<ActionResult<BatchNumber>> GetVendorBatchNumber(int id)
         {
             var vendor = await _context.Vendors.FindAsync(id);
             if (vendor == null)
             {
-                return NotFound();
+                return NotFound(new { result = "failure", message = "Vendor not found." });
             }
 
-            var interval = await _context.IntervalNumbers
-                                          .FirstOrDefaultAsync(i => i.VendorId == id);
+            var batchNumber = await _context.BatchNumbers
+                                             .FirstOrDefaultAsync(b => b.VendorId == id);
 
-            if (interval == null)
+            if (batchNumber == null)
             {
-                return NotFound("Interval settings not found.");
+                return NotFound(new { result = "failure", message = "Batch number not found." });
             }
 
-            return Ok(interval);
+            return Ok(new { result = "success", batchNumber });
         }
 
-
-        [HttpPost("{id}/interval")]
-        public async Task<IActionResult> SetVendorInterval(int id, [FromBody] IntervalNumber intervalData)
+        [HttpPost("{id}/batchnumbers")]
+        public async Task<IActionResult> SetVendorBatchNumber(int id, [FromBody] BatchNumber batchNumberData)
         {
             var vendor = await _context.Vendors.FindAsync(id);
             if (vendor == null)
             {
-                return NotFound();
+                return NotFound(new { result = "failure", message = "Vendor not found." });
             }
 
-            var interval = await _context.IntervalNumbers
-                                          .FirstOrDefaultAsync(i => i.VendorId == id);
+            var batchNumber = await _context.BatchNumbers
+                                             .FirstOrDefaultAsync(b => b.VendorId == id);
 
-            if (interval == null)
+            if (batchNumber == null)
             {
-                interval = new IntervalNumber
+                batchNumber = new BatchNumber
                 {
                     VendorId = id,
-                    StartDate = intervalData.StartDate,
-                    EndDate = intervalData.EndDate,
-                    Quantity = intervalData.Quantity
+                    StartDate = batchNumberData.StartDate,
+                    EndDate = batchNumberData.EndDate,
+                    Quantity = batchNumberData.Quantity
                 };
 
-                _context.IntervalNumbers.Add(interval);
+                _context.BatchNumbers.Add(batchNumber);
             }
             else
             {
-                interval.StartDate = intervalData.StartDate;
-                interval.EndDate = intervalData.EndDate;
-                interval.Quantity = intervalData.Quantity;
+                batchNumber.StartDate = batchNumberData.StartDate;
+                batchNumber.EndDate = batchNumberData.EndDate;
+                batchNumber.Quantity = batchNumberData.Quantity;
 
-                _context.IntervalNumbers.Update(interval);
+                _context.BatchNumbers.Update(batchNumber);
             }
 
             await _context.SaveChangesAsync();
-            return Ok(interval);
+            return Ok(new { result = "success", batchNumber });
         }
     }
 }

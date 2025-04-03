@@ -11,7 +11,7 @@ namespace OWMS.Models
 
         [Required]
         [MaxLength(100)]
-        public string CounterName { get; set; } = "";
+        public string Name { get; set; } = "";
 
         [MaxLength(500)]
         public string? Description { get; set; }

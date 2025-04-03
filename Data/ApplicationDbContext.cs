@@ -9,7 +9,7 @@ namespace OWMS.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Vendor> Vendors { get; set; }
-        public DbSet<IntervalNumber> IntervalNumbers { get; set; }
+        public DbSet<BatchNumber> BatchNumbers { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Counter> Counters { get; set; }
         public DbSet<Inventory> Inventorys { get; set; }

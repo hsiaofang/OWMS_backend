@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OWMS.Models
-{
+{   
     public class Vendor
     {
         [Key]
@@ -23,9 +23,11 @@ namespace OWMS.Models
 
         [Required]
         [MaxLength(255)]
-        public string PasswordHash { get; set; } = "";
+        public string Password { get; set; } = "";
 
         [MaxLength(500)]
         public string? Notes { get; set; }
+
+        public ICollection<BatchNumber> BatchNumbers { get; set; } = new List<BatchNumber>();
     }
 }

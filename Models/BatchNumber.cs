@@ -20,17 +20,18 @@ namespace OWMS.Models
         public DateTime EndDate { get; set; }
 
         [Required]
-        [ForeignKey("Vendor")]
-        public int VendorId { get; set; }
-
-        public Vendor Vendor { get; set; } = null!;
-
-        [Required]
         public int Quantity { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [MaxLength(500)]
         public string? Notes { get; set; }
+
+        [Required]
+        [ForeignKey("Vendor")]
+        public int VendorId { get; set; }
+        public Vendor Vendor { get; set; } = null!;
+
     }
 }
+

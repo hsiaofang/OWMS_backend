@@ -13,8 +13,9 @@ namespace OWMS.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<Counter> Counters { get; set; }
         public DbSet<Inventory> Inventorys { get; set; }
-        public DbSet<Order> Orders { get; set; }
+        //public DbSet<Order> Orders { get; set; }
     }
-}
+
+    }
 
 

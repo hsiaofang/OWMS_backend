@@ -14,12 +14,7 @@ namespace OWMS.Models
         public string ProductName { get; set; } = "";
 
         [Required]
-        public decimal Price { get; set; }
-
-        [Required]
-        [ForeignKey("Vendor")]
-        public int VendorId { get; set; }
-        public Vendor Vendor { get; set; } = null!;
+        public int Price { get; set; }
 
         [MaxLength(500)]
         public string? PhotoUrl { get; set; }
@@ -27,10 +22,6 @@ namespace OWMS.Models
         [NotMapped]
         public IFormFile? ImageFile { get; set; }
 
-        [Required]
-        [ForeignKey("Counter")]
-        public int CounterId { get; set; }
-        public Counter Counter { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -38,6 +29,16 @@ namespace OWMS.Models
         public string? Notes { get; set; }
 
         public string QRCode { get; set; } = "";
+
+        [Required]
+        [ForeignKey("Vendor")]
+        public int VendorId { get; set; }
+        public Vendor Vendor { get; set; } = null!;
+
+        [Required]
+        [ForeignKey("Counter")]
+        public int CounterId { get; set; }
+        public Counter Counter { get; set; } = null!;
 
         public ICollection<Inventory> Inventorys { get; set; } = new List<Inventory>();
     }

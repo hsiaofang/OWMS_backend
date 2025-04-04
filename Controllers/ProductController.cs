@@ -13,7 +13,7 @@ using OfficeOpenXml;
 
 namespace OWMS.Controllers
 {
-    [Route("api/products")]
+    [Route("/products")]
     [ApiController]
     public class ProductController : ControllerBase
     {
@@ -26,18 +26,27 @@ namespace OWMS.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetAllProducts(
-            [FromQuery] string? name,
-            [FromQuery] string? vendor,
-            [FromQuery] string? counter,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
+        [FromQuery] string? name,
+        [FromQuery] string? vendor,
+        [FromQuery] string? counter,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+            {
             try
             {
+                // 取得所有的廠商
+                var vendors = await _context.Vendors.ToListAsync();
+
+                // 取得所有的櫃號
+                var counters = await _context.Counters.ToListAsync();
+
+                // 查詢產品資料
                 var products = _context.Products
                     .Include(p => p.Vendor)
                     .Include(p => p.Counter)
                     .AsQueryable();
+
+                // 篩選條件
                 if (!string.IsNullOrEmpty(name))
                 {
                     products = products.Where(p => p.ProductName.Contains(name));
@@ -50,14 +59,29 @@ namespace OWMS.Controllers
                 {
                     products = products.Where(p => p.Counter != null && p.Counter.Name.Contains(counter));
                 }
+
+                // 計算總產品數量
                 int totalProducts = await products.CountAsync();
+
                 // 分頁
                 var pagedProducts = await products
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
-                return Ok(new { result = "success", message = "Products retrieved successfully.", totalProducts, products = pagedProducts });
+                // 返回結果
+                return Ok(new
+                {
+                    result = "success",
+                    message = "Products retrieved successfully.",
+                    totalProducts,
+                    totalPages = (int)Math.Ceiling((double)totalProducts / pageSize),
+                    currentPage = pageNumber,
+                    pageSize,
+                    products = pagedProducts,
+                    vendors = vendors.Select(v => v.Name).ToList(), // 返回所有廠商名稱
+                    counters = counters.Select(c => c.Name).ToList() // 返回所有櫃號名稱
+                });
             }
             catch (Exception ex)
             {
@@ -65,16 +89,17 @@ namespace OWMS.Controllers
             }
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetProductById(int id)
-        {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound(new { result = "error", message = "Product not found." });
-            }
-            return Ok(new { result = "success", message = "Product retrieved successfully.", product });
-        }
+
+        //[HttpGet("{id}")]
+        //public async Task<IActionResult> GetProductById(int id)
+        //{
+        //    var product = await _context.Products.FindAsync(id);
+        //    if (product == null)
+        //    {
+        //        return NotFound(new { result = "error", message = "Product not found." });
+        //    }
+        //    return Ok(new { result = "success", message = "Product retrieved successfully.", product });
+        //}
 
         // 新增
         [HttpPost("create")]
@@ -107,7 +132,7 @@ namespace OWMS.Controllers
                     product.PhotoUrl = $"/images/{newFileName}";
                 }
 
-                product.QRCode = GenerateQRCode(product.ProductName);
+                //product.QRCode = GenerateQRCode(product.ProductName);
                 product.CreatedAt = DateTime.UtcNow;
                 _context.Add(product);
                 await _context.SaveChangesAsync();
@@ -124,184 +149,192 @@ namespace OWMS.Controllers
             return BadRequest(new { result = "error", message = "Invalid input data.", details = ModelState });
         }
 
-        // 修改
-        [HttpPatch("edit/{id}")]
-        public async Task<IActionResult> EditProduct(int id, [FromBody] ProductRequest updatedProduct)
-        {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+        //// 修改
+        //[HttpPatch("edit/{id}")]
+        //public async Task<IActionResult> EditProduct(int id, [FromBody] ProductRequest updatedProduct)
+        //{
+        //    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
 
-            if (product == null)
-            {
-                return NotFound(new { result = "error", message = "Product not found." });
-            }
+        //    if (product == null
+        //        )
+        //    {
+        //        return NotFound(new { result = "error", message = "Product not found." });
+        //    }
 
-            if (!string.IsNullOrEmpty(updatedProduct.ProductName))
-            {
-                product.ProductName = updatedProduct.ProductName;
-            }
+        //    if (!string.IsNullOrEmpty(updatedProduct.ProductName))
+        //    {
+        //        product.ProductName = updatedProduct.ProductName;
+        //    }
 
-            if (updatedProduct.Price.HasValue)
-            {
-                product.Price = updatedProduct.Price.Value;
-            }
+        //    if (updatedProduct.Price.HasValue)
+        //    {
+        //        product.Price = updatedProduct.Price.Value;
+        //    }
 
-            if (updatedProduct.VendorId.HasValue)
-            {
-                var vendorExist = await _context.Vendors.AnyAsync(v => v.VendorId == updatedProduct.VendorId.Value);
-                if (!vendorExist)
-                {
-                    return BadRequest(new { result = "error", message = "Invalid VendorId." });
-                }
-                product.VendorId = updatedProduct.VendorId.Value;
-            }
+        //    if (updatedProduct.VendorId.HasValue)
+        //    {
+        //        var vendorExist = await _context.Vendors.AnyAsync(v => v.VendorId == updatedProduct.VendorId.Value);
+        //        if (!vendorExist)
+        //        {
+        //            return BadRequest(new { result = "error", message = "Invalid VendorId." });
+        //        }
+        //        product.VendorId = updatedProduct.VendorId.Value;
+        //    }
 
-            if (updatedProduct.CounterId.HasValue)
-            {
-                var counterExist = await _context.Counters.AnyAsync(c => c.CounterId == updatedProduct.CounterId.Value);
-                if (!counterExist)
-                {
-                    return BadRequest(new { result = "error", message = "Invalid CounterId." });
-                }
-                product.CounterId = updatedProduct.CounterId.Value;
-            }
+        //    if (updatedProduct.CounterId.HasValue)
+        //    {
+        //        var counterExist = await _context.Counters.AnyAsync(c => c.CounterId == updatedProduct.CounterId.Value);
+        //        if (!counterExist)
+        //        {
+        //            return BadRequest(new { result = "error", message = "Invalid CounterId." });
+        //        }
+        //        product.CounterId = updatedProduct.CounterId.Value;
+        //    }
 
-            _context.Products.Update(product);
-            await _context.SaveChangesAsync();
+        //    _context.Products.Update(product);
+        //    await _context.SaveChangesAsync();
 
-            return Ok(new { result = "success", message = "Product updated successfully.", product });
-        }
+        //    return Ok(new { result = "success", message = "Product updated successfully.", product });
+        //}
 
-        // 刪除
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteProduct(int id)
-        {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound(new { result = "error", message = "Product not found." });
-            }
+        //// 刪除
+        //[HttpDelete("delete/{id}")]
+        //public async Task<IActionResult> DeleteProduct(int id)
+        //{
+        //    var product = await _context.Products.FindAsync(id);
+        //    if (product == null)
+        //    {
+        //        return NotFound(new { result = "error", message = "Product not found." });
+        //    }
 
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", product.PhotoUrl.TrimStart('/'));
-            if (System.IO.File.Exists(filePath))
-            {
-                System.IO.File.Delete(filePath);
-            }
+        //    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", product.PhotoUrl.TrimStart('/'));
+        //    if (System.IO.File.Exists(filePath))
+        //    {
+        //        System.IO.File.Delete(filePath);
+        //    }
 
-            _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
+        //    _context.Products.Remove(product);
+        //    await _context.SaveChangesAsync();
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
-        private string GenerateQRCode(string data)
-        {
-            using (var qrGenerator = new QRCodeGenerator())
-            {
-                var qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
+        //private string GenerateQRCode(string data)
+        //{
+        //    using (var qrGenerator = new QRCodeGenerator())
+        //    {
+        //        var qrCodeData = qrGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
 
-                using (var qrCode = new PngByteQRCode(qrCodeData))
-                {
-                    byte[] byteArray = qrCode.GetGraphic(20);
-                    return Convert.ToBase64String(byteArray);
-                }
-            }
-        }
+        //        using (var qrCode = new PngByteQRCode(qrCodeData))
+        //        {
+        //            byte[] byteArray = qrCode.GetGraphic(20);
+        //            return Convert.ToBase64String(byteArray);
+        //        }
+        //    }
+        //}
 
-        [HttpPost("generate-qrcode/batch")]
-        public async Task<IActionResult> GenerateBatchQRCode([FromBody] List<int> productIds)
-        {
-            var products = await _context.Products
-                                        .Where(p => productIds.Contains(p.Id))
-                                        .ToListAsync();
+        //[HttpPost("generate-qrcode/batch")]
+        //public async Task<IActionResult> GenerateBatchQRCode([FromBody] List<int> productIds)
+        //{
+        //    var products = await _context.Products
+        //                                .Where(p => productIds.Contains(p.Id))
+        //                                .ToListAsync();
 
-            if (products == null || products.Count == 0)
-            {
-                return NotFound(new { result = "error", message = "No products found for the given IDs." });
-            }
+        //    if (products == null || products.Count == 0)
+        //    {
+        //        return NotFound(new { result = "error", message = "No products found for the given IDs." });
+        //    }
 
-            var qrCodes = new List<byte[]>();
+        //    var qrCodes = new List<byte[]>();
 
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        //    var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
-            using (var qrGenerator = new QRCodeGenerator())
-            {
-                foreach (var product in products)
-                {
-                    var qrUrl = $"{baseUrl}/product/{product.Id}";
+        //    using (var qrGenerator = new QRCodeGenerator())
+        //    {
+        //        foreach (var product in products)
+        //        {
+        //            var qrUrl = $"{baseUrl}/product/{product.Id}";
 
-                    var qrCodeData = qrGenerator.CreateQrCode(qrUrl, QRCodeGenerator.ECCLevel.Q);
-                    using (var qrCode = new PngByteQRCode(qrCodeData))
-                    {
-                        var qrImage = qrCode.GetGraphic(20);
-                        qrCodes.Add(qrImage);
-                    }
-                }
-            }
+        //            var qrCodeData = qrGenerator.CreateQrCode(qrUrl, QRCodeGenerator.ECCLevel.Q);
+        //            using (var qrCode = new PngByteQRCode(qrCodeData))
+        //            {
+        //                var qrImage = qrCode.GetGraphic(20);
+        //                qrCodes.Add(qrImage);
+        //            }
+        //        }
+        //    }
 
-            // 打包 ZIP 檔案
-            using var memoryStream = new MemoryStream();
-            using (var zipArchive = new System.IO.Compression.ZipArchive(memoryStream, System.IO.Compression.ZipArchiveMode.Create, true))
-            {
-                for (int i = 0; i < qrCodes.Count; i++)
-                {
-                    var entry = zipArchive.CreateEntry($"QRCode_{products[i].ProductName}.png", System.IO.Compression.CompressionLevel.Fastest);
-                    using (var entryStream = entry.Open())
-                    {
-                        entryStream.Write(qrCodes[i], 0, qrCodes[i].Length);
-                    }
-                }
-            }
+        //    // 打包 ZIP 檔案
+        //    using var memoryStream = new MemoryStream();
+        //    using (var zipArchive = new System.IO.Compression.ZipArchive(memoryStream, System.IO.Compression.ZipArchiveMode.Create, true))
+        //    {
+        //        for (int i = 0; i < qrCodes.Count; i++)
+        //        {
+        //            var entry = zipArchive.CreateEntry($"QRCode_{products[i].ProductName}.png", System.IO.Compression.CompressionLevel.Fastest);
+        //            using (var entryStream = entry.Open())
+        //            {
+        //                entryStream.Write(qrCodes[i], 0, qrCodes[i].Length);
+        //            }
+        //        }
+        //    }
 
-            return File(memoryStream.ToArray(), "application/zip", "QRCodes.zip");
-        }
+        //    return File(memoryStream.ToArray(), "application/zip", "QRCodes.zip");
+        //}
 
         // 匯入Excel 
-        [HttpPost("import")]
-        public async Task<IActionResult> ImportExcel(IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest(new { result = "error", message = "No file uploaded." });
-            }
+        //[HttpPost("import")]
+        //public async Task<IActionResult> ImportExcel(IFormFile file)
+        //{
+        //    if (file == null || file.Length == 0)
+        //    {
+        //        return BadRequest(new { result = "error", message = "No file uploaded." });
+        //    }
 
-            try
-            {
-                using (var package = new ExcelPackage(file.OpenReadStream()))
-                {
-                    var worksheet = package.Workbook.Worksheets[0];
-                    var rowCount = worksheet.Dimension.Rows;
+        //    try
+        //    {
+        //        using (var package = new ExcelPackage(file.OpenReadStream()))
+        //        {
+        //            var worksheet = package.Workbook.Worksheets[0];
+        //            var rowCount = worksheet.Dimension.Rows;
 
-                    for (int row = 2; row <= rowCount; row++)
-                    {
-                        var productName = worksheet.Cells[row, 2].Text;
-                        var price = decimal.TryParse(worksheet.Cells[row, 3].Text, out decimal parsedPrice) ? parsedPrice : 0;
-                        var qrCode = worksheet.Cells[row, 4].Text;
+        //            for (int row = 2; row <= rowCount; row++)
+        //            {
+        //                var productName = worksheet.Cells[row, 2].Text;
+        //                var price = worksheet.Cells[row, 3].Value;
 
-                        if (string.IsNullOrWhiteSpace(productName))
-                        {
-                            continue;
-                        }
+        //                int parsedPrice = 0;
 
-                        var product = new Product
-                        {
-                            ProductName = productName,
-                            Price = price,
-                            QRCode = qrCode,
-                            CreatedAt = DateTime.UtcNow
-                        };
+        //                if (price is decimal || price is double)
+        //                {
+        //                    parsedPrice = (int)Math.Floor(Convert.ToDecimal(price));
+        //                }
 
-                        _context.Products.Add(product);
-                    }
+        //                var qrCode = worksheet.Cells[row, 4].Text;
 
-                    await _context.SaveChangesAsync();
-                    return Ok(new { result = "success", message = "Products imported successfully." });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { result = "error", message = "Internal server error", details = ex.Message });
-            }
-        }
+        //                if (string.IsNullOrWhiteSpace(productName))
+        //                {
+        //                    continue;
+        //                }
 
+        //                var product = new Product
+        //                {
+        //                    ProductName = productName,
+        //                    Price = parsedPrice,
+        //                    QRCode = qrCode,
+        //                    CreatedAt = DateTime.UtcNow
+        //                };
+
+        //                _context.Products.Add(product);
+        //            }
+
+        //            await _context.SaveChangesAsync();
+        //            return Ok(new { result = "success", message = "Products imported successfully." });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { result = "error", message = "Internal server error", details = ex.Message });
+        //    }
+        //}
     }
 }

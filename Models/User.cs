@@ -8,16 +8,11 @@ namespace OWMS.Models
         Admin,
         User
     }
-
     public class User
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int UserId { get; set; }
-
-        [Required]
-        [MaxLength(100)]
-        public string FullName { get; set; } = "";
 
         [Required]
         [MaxLength(100)]
@@ -27,9 +22,7 @@ namespace OWMS.Models
         [MaxLength(200)]
         public string Password { get; set; } = "";
 
-        [Required]
         public UserRole Role { get; set; } = UserRole.Admin;
-
-        public ICollection<Inventory> InventoryLogs { get; set; } = new List<Inventory>();
     }
+
 }

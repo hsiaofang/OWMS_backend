@@ -19,10 +19,12 @@ namespace OWMS.Models
         [Required]
         public DateTime EndDate { get; set; }
 
+        // 外鍵 VendorId，指向 Vendor 表
         [Required]
         [ForeignKey("Vendor")]
         public int VendorId { get; set; }
 
+        // 導航屬性
         public Vendor Vendor { get; set; } = null!;
 
         [Required]

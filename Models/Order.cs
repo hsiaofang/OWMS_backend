@@ -11,7 +11,7 @@ namespace OWMS.Models
         [ForeignKey("IntervalNumber")]
         public int IntervalNumberId { get; set; }
 
-        public IntervalNumber IntervalNumber { get; set; } = null!;
+        public BatchNumber BatchNumber { get; set; } = null!;
 
         [ForeignKey("Vendor")]
         public int VendorId { get; set; }
